@@ -2,7 +2,7 @@ import UIKit
 
 struct QuizeQuestion {
     // MARK: - Properties
-    let image: String
+    let imageName: String
     let text: String
     let correctAnswer: Bool
 
@@ -10,52 +10,52 @@ struct QuizeQuestion {
     static func makeQuizeQuestion() -> [QuizeQuestion] {
         var quizeQuestionArray: [QuizeQuestion] = []
         quizeQuestionArray.append(QuizeQuestion(
-            image: "The Godfather",
+            imageName: "The Godfather",
             text: "Рейтинг этого фильма больше чем 6?",
             correctAnswer: true
         ))
         quizeQuestionArray.append(QuizeQuestion(
-            image: "The Dark Knight",
+            imageName: "The Dark Knight",
             text: "Рейтинг этого фильма больше чем 6?",
             correctAnswer: true
         ))
         quizeQuestionArray.append(QuizeQuestion(
-            image: "Kill Bill",
+            imageName: "Kill Bill",
             text: "Рейтинг этого фильма больше чем 6?",
             correctAnswer: true
         ))
         quizeQuestionArray.append(QuizeQuestion(
-            image: "The Avengers",
+            imageName: "The Avengers",
             text: "Рейтинг этого фильма больше чем 6?",
             correctAnswer: true
         ))
         quizeQuestionArray.append(QuizeQuestion(
-            image: "Deadpool",
+            imageName: "Deadpool",
             text: "Рейтинг этого фильма больше чем 6?",
             correctAnswer: true
         ))
         quizeQuestionArray.append(QuizeQuestion(
-            image: "The Green Knight",
+            imageName: "The Green Knight",
             text: "Рейтинг этого фильма больше чем 6?",
             correctAnswer: true
         ))
         quizeQuestionArray.append(QuizeQuestion(
-            image: "Old",
+            imageName: "Old",
             text: "Рейтинг этого фильма больше чем 6?",
             correctAnswer: false
         ))
         quizeQuestionArray.append(QuizeQuestion(
-            image: "The Ice Age Adventures of Buck Wild",
+            imageName: "The Ice Age Adventures of Buck Wild",
             text: "Рейтинг этого фильма больше чем 6?",
             correctAnswer: false
         ))
         quizeQuestionArray.append(QuizeQuestion(
-            image: "Tesla",
+            imageName: "Tesla",
             text: "Рейтинг этого фильма больше чем 6?",
             correctAnswer: false
         ))
         quizeQuestionArray.append(QuizeQuestion(
-            image: "Vivarium",
+            imageName: "Vivarium",
             text: "Рейтинг этого фильма больше чем 6?",
             correctAnswer: false
         ))
@@ -103,11 +103,11 @@ final class MovieQuizViewController: UIViewController {
     @IBOutlet private var buttons: [UIButton]!
 
     @IBAction private func yesTapped() {
-        buttonTapped(response: true)
+        handleAnswer(response: true)
     }
 
     @IBAction private func noTapped() {
-        buttonTapped(response: false)
+        handleAnswer(response: false)
     }
 
     // MARK: - Lifecycle
@@ -130,29 +130,8 @@ final class MovieQuizViewController: UIViewController {
             // показать результат квиза
             gameCount += 1
             allCorrectAnswer += currentCorrectAnswer
-            var alertTitle = "Этот раунд окончен!"
-            if currentCorrectAnswer >= recordCorrectAnswer {
-                alertTitle = "Новый рекорд!"
-                recordCorrectAnswer = currentCorrectAnswer
-                recordDate = Date()
-            }
-
-            if currentCorrectAnswer == numberOfQuestionsInGame {
-                alertTitle = "Поздравляем. Лучший результат!"
-            }
-            let recordDateString = dateToString(date: recordDate)
-            averageAccuracy = Double(allCorrectAnswer * 100) / Double(numberOfQuestionsInGame * gameCount)
-            let resultTemp = QuizeResultsViewModel(
-                title: alertTitle,
-                text: """
-                Ваш результат:\(currentCorrectAnswer)/\(numberOfQuestionsInGame)
-                Количество сыграных квизов: \(gameCount)
-                Рекорд: \(recordCorrectAnswer)/\(numberOfQuestionsInGame) \(recordDateString)
-                Средняя точность: \(String(format: "%.02f", averageAccuracy))%
-                """,
-                buttonText: "Начать новую игру"
-            )
-            show(quize: resultTemp)
+            let resultQuize = getResultQuize()
+            show(quize: resultQuize)
         } else {
             currentQuestionIndex += 1 // увеличиваем индекс текущего вопроса на 1
             // показать следующий вопрос
@@ -184,13 +163,13 @@ final class MovieQuizViewController: UIViewController {
             preferredStyle: .alert) // preferredStyle может быть .alert или .actionSheet
 
         // создаём для него кнопки с действиями
-        let action = UIAlertAction(title: result.buttonText, style: .default) { _ in
+        let action = UIAlertAction(title: result.buttonText, style: .default) { [weak self] _ in
             // убираем затемнение фона
             UIView.animate(withDuration: 0.25) {
-                self.backgroundView.alpha = 0
+                self?.backgroundView.alpha = 0
             }
-            self.backgroundView.removeFromSuperview()
-            self.startGame()
+            self?.backgroundView.removeFromSuperview()
+            self?.startGame()
         }
 
         // добавляем в алерт кнопки
@@ -202,11 +181,12 @@ final class MovieQuizViewController: UIViewController {
             self.backgroundView.alpha = UIColor.YPTheme.background.cgColor.alpha
         }
         // показываем всплывающее окно
-        self.present(alert, animated: true, completion: nil)
+        present(alert, animated: true, completion: nil)
     }
 
     private func convert(model: QuizeQuestion) -> QuizeStepViewModel {
-        let image = UIImage(named: model.image) ?? UIImage(systemName: "exclamationmark.icloud.fill")!
+        let notAvailableImage = UIImage(systemName: "exclamationmark.icloud.fill")!
+        let image = UIImage(named: model.imageName) ?? notAvailableImage
         return QuizeStepViewModel(
             image: image,
             question: model.text,
@@ -214,22 +194,18 @@ final class MovieQuizViewController: UIViewController {
         )
     }
 
-    private func buttonTapped(response: Bool) {
+    private func handleAnswer(response: Bool) {
         if response == questions[currentQuestionIndex].correctAnswer {
             currentCorrectAnswer += 1
             showCorrectAnswer(response: true)
         } else {
             showCorrectAnswer(response: false)
         }
-        for button in buttons {
-            button.isEnabled = false
-        }
+        buttonsEnable(false)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
         // код, который вы хотите вызвать через 1 секунду,
         // в нашем случае это просто функция showNextQuestionOrResults()
-            for button in self.buttons {
-                button.isEnabled = true
-            }
+            self.buttonsEnable(true)
             self.showNextQuestionOrResults()
         }
     }
@@ -247,5 +223,38 @@ final class MovieQuizViewController: UIViewController {
         let formatter = DateFormatter()
         formatter.dateFormat = "dd.MM.YY HH:mm"
         return formatter.string(from: date)
+    }
+
+    private func getResultQuize() -> QuizeResultsViewModel {
+        var alertTitle = "Этот раунд окончен!"
+        var recordDateString = ""
+        if currentCorrectAnswer >= recordCorrectAnswer {
+            alertTitle = "Новый рекорд!"
+            recordCorrectAnswer = currentCorrectAnswer
+            recordDateString = Date().dateTimeString
+        }
+
+        if currentCorrectAnswer == numberOfQuestionsInGame {
+            alertTitle = "Поздравляем. Лучший результат!"
+        }
+//        let recordDateString = dateToString(date: recordDate)
+        averageAccuracy = Double(allCorrectAnswer * 100) / Double(numberOfQuestionsInGame * gameCount)
+        let resultQuize = QuizeResultsViewModel(
+            title: alertTitle,
+            text: """
+            Ваш результат:\(currentCorrectAnswer)/\(numberOfQuestionsInGame)
+            Количество сыграных квизов: \(gameCount)
+            Рекорд: \(recordCorrectAnswer)/\(numberOfQuestionsInGame) \(recordDateString)
+            Средняя точность: \(String(format: "%.02f", averageAccuracy))%
+            """,
+            buttonText: "Начать новую игру"
+        )
+        return resultQuize
+    }
+
+    private func buttonsEnable(_ state: Bool) {
+        for button in self.buttons {
+            button.isEnabled = state
+        }
     }
 }
