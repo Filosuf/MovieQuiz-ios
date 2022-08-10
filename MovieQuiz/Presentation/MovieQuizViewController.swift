@@ -81,7 +81,7 @@ final class MovieQuizViewController: UIViewController {
     // MARK: - Properties
     private var questions = QuizeQuestion.makeQuizeQuestion()
     private var currentQuestionIndex = 0
-    private let numberOfQuestionsInGame = 2
+    private let numberOfQuestionsInGame = 10
     private var currentCorrectAnswer = 0
     private var recordCorrectAnswer = 0
     private var allCorrectAnswer = 0
@@ -98,8 +98,6 @@ final class MovieQuizViewController: UIViewController {
     @IBOutlet private weak var counterLabel: UILabel!
     @IBOutlet private weak var posterImage: UIImageView!
     @IBOutlet private weak var questionLabel: UILabel!
-    @IBOutlet private weak var yesButton: UIButton!
-    @IBOutlet private weak var noButton: UIButton!
     @IBOutlet private var buttons: [UIButton]!
 
     @IBAction private func yesTapped() {
@@ -117,6 +115,13 @@ final class MovieQuizViewController: UIViewController {
         super.viewDidLoad()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        setNeedsStatusBarAppearanceUpdate()
+    }
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        .lightContent
+    }
     // MARK: - Metods
     private func setupView() {
         for button in buttons {
