@@ -88,7 +88,8 @@ final class MovieQuizViewController: UIViewController {
     private var gameCount = 0
     private var averageAccuracy = 0.0
     private var recordDate = Date()
-    private lazy var backgroundView: UIView = {
+
+    private lazy var overlayForAlertView: UIView = {
         let backgroundView = UIView(frame: self.view.frame)
         backgroundView.backgroundColor = .YPTheme.background
         backgroundView.alpha = 0
@@ -171,9 +172,9 @@ final class MovieQuizViewController: UIViewController {
         let action = UIAlertAction(title: result.buttonText, style: .default) { [weak self] _ in
             // убираем затемнение фона
             UIView.animate(withDuration: 0.25) {
-                self?.backgroundView.alpha = 0
+                self?.overlayForAlertView.alpha = 0
             }
-            self?.backgroundView.removeFromSuperview()
+            self?.overlayForAlertView.removeFromSuperview()
             self?.startGame()
         }
 
@@ -181,9 +182,9 @@ final class MovieQuizViewController: UIViewController {
         alert.addAction(action)
 
         // затемнение фона
-        view.addSubview(backgroundView)
+        view.addSubview(overlayForAlertView)
         UIView.animate(withDuration: 0.25) {
-            self.backgroundView.alpha = UIColor.YPTheme.background.cgColor.alpha
+            self.overlayForAlertView.alpha = UIColor.YPTheme.background.cgColor.alpha
         }
         // показываем всплывающее окно
         present(alert, animated: true, completion: nil)
@@ -224,12 +225,6 @@ final class MovieQuizViewController: UIViewController {
         }
     }
 
-    private func dateToString(date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd.MM.YY HH:mm"
-        return formatter.string(from: date)
-    }
-
     private func getResultQuize() -> QuizeResultsViewModel {
         var alertTitle = "Этот раунд окончен!"
         var recordDateString = ""
@@ -242,7 +237,6 @@ final class MovieQuizViewController: UIViewController {
         if currentCorrectAnswer == numberOfQuestionsInGame {
             alertTitle = "Поздравляем. Лучший результат!"
         }
-//        let recordDateString = dateToString(date: recordDate)
         averageAccuracy = Double(allCorrectAnswer * 100) / Double(numberOfQuestionsInGame * gameCount)
         let resultQuize = QuizeResultsViewModel(
             title: alertTitle,
