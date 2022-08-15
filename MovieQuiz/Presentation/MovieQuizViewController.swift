@@ -191,7 +191,9 @@ final class MovieQuizViewController: UIViewController {
     }
 
     private func convert(model: QuizeQuestion) -> QuizeStepViewModel {
+        // swiftlint:disable force_unwrapping
         let notAvailableImage = UIImage(systemName: "exclamationmark.icloud.fill")!
+        // swiftlint:enable force_unwrapping
         let image = UIImage(named: model.imageName) ?? notAvailableImage
         return QuizeStepViewModel(
             image: image,
