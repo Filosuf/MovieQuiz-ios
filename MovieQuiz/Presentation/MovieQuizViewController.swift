@@ -1,87 +1,11 @@
 import UIKit
 
-struct QuizeQuestion {
-    // MARK: - Properties
-    let imageName: String
-    let text: String
-    let correctAnswer: Bool
-
-    // MARK: - Metods
-    static func makeQuizeQuestion() -> [QuizeQuestion] {
-        var quizeQuestionArray: [QuizeQuestion] = []
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "The Godfather",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "The Dark Knight",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "Kill Bill",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "The Avengers",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "Deadpool",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "The Green Knight",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "Old",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: false
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "The Ice Age Adventures of Buck Wild",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: false
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "Tesla",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: false
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "Vivarium",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: false
-        ))
-        return quizeQuestionArray
-    }
-}
-
-// для состояния "Вопрос задан"
-struct QuizeStepViewModel {
-    let image: UIImage
-    let question: String
-    let questionNumber: String
-}
-
-// для состояния "Результат квиза"
-struct QuizeResultsViewModel {
-    let title: String
-    let text: String
-    let buttonText: String
-}
-
 final class MovieQuizViewController: UIViewController {
     // MARK: - Properties
-    private var questions = QuizeQuestion.makeQuizeQuestion()
+    private let questionFactory: QuestionFactoryProtocol = QuestionFactory()
+    private var currentQuestion: QuizeQuestion!
     private var currentQuestionIndex = 0
-    private let numberOfQuestionsInGame = 10
+    private let questionsAmount = 10
     private var currentCorrectAnswer = 0
     private var recordCorrectAnswer = 0
     private var allCorrectAnswer = 0
@@ -132,7 +56,7 @@ final class MovieQuizViewController: UIViewController {
     }
 
     private func showNextQuestionOrResults() {
-        if currentQuestionIndex == numberOfQuestionsInGame - 1 {
+        if currentQuestionIndex == questionsAmount - 1 {
             // показать результат квиза
             gameCount += 1
             allCorrectAnswer += currentCorrectAnswer
@@ -141,15 +65,18 @@ final class MovieQuizViewController: UIViewController {
         } else {
             currentQuestionIndex += 1 // увеличиваем индекс текущего вопроса на 1
             // показать следующий вопрос
-            show(quize: convert(model: questions[currentQuestionIndex]))
+            guard let nextQuestion = questionFactory.requestNextQuestion() else { return }
+            show(quize: convert(model: nextQuestion))
+            currentQuestion = nextQuestion
         }
     }
 
     private func startGame() {
         currentCorrectAnswer = 0
         currentQuestionIndex = 0
-        questions.shuffle()
-        show(quize: convert(model: questions[currentQuestionIndex]))
+        guard let nextQuestion = questionFactory.requestNextQuestion() else { return }
+        show(quize: convert(model: nextQuestion))
+        currentQuestion = nextQuestion
     }
 
     private func show(quize step: QuizeStepViewModel) {
@@ -198,12 +125,12 @@ final class MovieQuizViewController: UIViewController {
         return QuizeStepViewModel(
             image: image,
             question: model.text,
-            questionNumber: "\(currentQuestionIndex + 1)/\(numberOfQuestionsInGame)"
+            questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)"
         )
     }
 
     private func handleAnswer(response: Bool) {
-        if response == questions[currentQuestionIndex].correctAnswer {
+        if response == currentQuestion.correctAnswer {
             currentCorrectAnswer += 1
             showCorrectAnswer(response: true)
         } else {
@@ -236,16 +163,16 @@ final class MovieQuizViewController: UIViewController {
             recordDateString = Date().dateTimeString
         }
 
-        if currentCorrectAnswer == numberOfQuestionsInGame {
+        if currentCorrectAnswer == questionsAmount {
             alertTitle = "Поздравляем. Лучший результат!"
         }
-        averageAccuracy = Double(allCorrectAnswer * 100) / Double(numberOfQuestionsInGame * gameCount)
+        averageAccuracy = Double(allCorrectAnswer * 100) / Double(questionsAmount * gameCount)
         let resultQuize = QuizeResultsViewModel(
             title: alertTitle,
             text: """
-            Ваш результат:\(currentCorrectAnswer)/\(numberOfQuestionsInGame)
+            Ваш результат:\(currentCorrectAnswer)/\(questionsAmount)
             Количество сыграных квизов: \(gameCount)
-            Рекорд: \(recordCorrectAnswer)/\(numberOfQuestionsInGame) \(recordDateString)
+            Рекорд: \(recordCorrectAnswer)/\(questionsAmount) \(recordDateString)
             Средняя точность: \(String(format: "%.02f", averageAccuracy))%
             """,
             buttonText: "Начать новую игру"
