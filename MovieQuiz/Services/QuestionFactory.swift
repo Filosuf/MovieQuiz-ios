@@ -7,8 +7,9 @@
 
 import Foundation
 
-class QuestionFactory: QuestionFactoryProtocol {
+final class QuestionFactory: QuestionFactoryProtocol {
     // MARK: - Properties
+    private let delegate: QuestionFactoryDelegate
     private let questionsArray: [QuizeQuestion] = [
     QuizeQuestion(
         imageName: "The Godfather",
@@ -59,10 +60,18 @@ class QuestionFactory: QuestionFactoryProtocol {
         imageName: "Vivarium",
         text: "Рейтинг этого фильма больше чем 6?",
         correctAnswer: false
-    )]
+    )
+    ]
 
-    func requestNextQuestion() -> QuizeQuestion? {
+    // MARK: - Lifecycle
+    init(delegate: QuestionFactoryDelegate) {
+        self.delegate = delegate
+    }
+
+    // MARK: - Methods
+    func requestNextQuestion() {
         let index = (0 ..< questionsArray.count).randomElement() ?? 0
-        return questionsArray[safe: index]
+        let question = questionsArray[safe: index]
+        delegate.didReciveNextQuestion(question: question)
     }
 }
