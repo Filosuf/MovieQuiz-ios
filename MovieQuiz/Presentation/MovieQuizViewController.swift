@@ -2,8 +2,12 @@ import UIKit
 
 final class MovieQuizViewController: UIViewController {
     // MARK: - Properties
-    private lazy var questionFactory: QuestionFactoryProtocol = QuestionFactory(delegate: self)
-    private lazy var resultAlertPresenter = ResultAlertPresenter(viewController: self)
+    private let moviesLoader = MoviesLoader()
+    private lazy var questionFactory: QuestionFactoryProtocol = QuestionFactory(
+        moviesLoader: moviesLoader,
+        delegate: self
+    )
+    private lazy var alertPresenter = AlertPresenter(viewController: self)
     private let statisticService: StatisticService = StatisticServiceImplementation()
     private var currentQuestion: QuizeQuestion!
     private var currentQuestionIndex = 0
@@ -26,6 +30,7 @@ final class MovieQuizViewController: UIViewController {
     @IBOutlet private weak var posterImage: UIImageView!
     @IBOutlet private weak var questionLabel: UILabel!
     @IBOutlet private var buttons: [UIButton]!
+    @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
 
     @IBAction private func yesTapped() {
         handleAnswer(response: true)
@@ -39,16 +44,10 @@ final class MovieQuizViewController: UIViewController {
     override func viewDidLoad() {
         setupView()
         startGame()
+        questionFactory.loadData()
+        showLoadingIndicator()
         print(NSHomeDirectory())
-        //        var jsonStringUrl = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        //        jsonStringUrl.appendPathComponent("top250MoviesIMDB.json")
-        //        let jsonString = try! String(contentsOf: jsonStringUrl)
-        ////        print(jsonString)
-        //        let data = jsonString.data(using: .utf8)!
-        //        let json = try? JSONDecoder().decode(JsonContainer.self, from: data)
-        //        print(json?.items[0])
         super.viewDidLoad()
-        //        JSONSerialization.jsonObject(with: <#T##InputStream#>, options: <#T##JSONSerialization.ReadingOptions#>)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -85,7 +84,7 @@ final class MovieQuizViewController: UIViewController {
         currentCorrectAnswer = 0
         currentQuestionIndex = 0
         // запросить следующий вопрос
-        questionFactory.requestNextQuestion()
+//        questionFactory.requestNextQuestion()
     }
 
     private func show(quize step: QuizeStepViewModel) {
@@ -104,7 +103,7 @@ final class MovieQuizViewController: UIViewController {
         }
 
         // здесь мы показываем результат прохождения квиза
-        resultAlertPresenter.showAlert(result: result) { [weak self] in
+        alertPresenter.showResultAlert(result: result) { [weak self] in
             // убираем затемнение фона
             UIView.animate(withDuration: 0.25) {
                 self?.overlayForAlertView.alpha = 0
@@ -118,7 +117,7 @@ final class MovieQuizViewController: UIViewController {
         // swiftlint:disable force_unwrapping
         let notAvailableImage = UIImage(systemName: "exclamationmark.icloud.fill")!
         // swiftlint:enable force_unwrapping
-        let image = UIImage(named: model.imageName) ?? notAvailableImage
+        let image = UIImage(data: model.image) ?? notAvailableImage
         return QuizeStepViewModel(
             image: image,
             question: model.text,
@@ -178,11 +177,35 @@ final class MovieQuizViewController: UIViewController {
             button.isEnabled = state
         }
     }
+
+    private func showLoadingIndicator() {
+        activityIndicator.isHidden = false // говорим, что индикатор загрузки не скрыт
+        activityIndicator.startAnimating() // включаем анимацию
+    }
+
+    private func showNetworkError(message: String) {
+        activityIndicator.isHidden = true // скрываем индикатор загрузки
+
+        // затемнение фона
+        view.addSubview(overlayForAlertView)
+        UIView.animate(withDuration: 0.25) {
+            self.overlayForAlertView.alpha = UIColor.YPTheme.background.cgColor.alpha
+        }
+
+        // здесь мы показываем результат прохождения квиза
+        alertPresenter.showErrorAlert(message: message) { [weak self] in
+            // убираем затемнение фона
+            UIView.animate(withDuration: 0.25) {
+                self?.overlayForAlertView.alpha = 0
+            }
+            self?.overlayForAlertView.removeFromSuperview()
+        }
+    }
 }
 
 // MARK: - QuestionFactoryDelegate
 extension MovieQuizViewController: QuestionFactoryDelegate {
-    func didReciveNextQuestion(question: QuizeQuestion?) {
+    func didReceiveNextQuestion(question: QuizeQuestion?) {
         guard let question = question else { return }
         currentQuestion = question
         let viewModel = convert(model: question)
@@ -190,21 +213,13 @@ extension MovieQuizViewController: QuestionFactoryDelegate {
             self?.show(quize: viewModel)
         }
     }
+
+    func didLoadDataFromServer() {
+        activityIndicator.stopAnimating() // скрываем индикатор загрузки
+        questionFactory.requestNextQuestion()
+    }
+
+    func didFailToLoadData(with error: Error) {
+        showNetworkError(message: error.localizedDescription) // возьмём в качестве сообщения описание ошибки
+    }
 }
-//
-//struct Actor: Codable {
-//    let id: String
-//    let image: String
-//    let name: String
-//    let asCharacter: String
-//}
-//struct Movie: Codable {
-//    let id: String
-//    let title: String
-//    let year: Int
-//    let image: String
-//    let releaseDate: String
-//    let runtimeMins: Int
-//    let directors: String
-//    let actorList: [Actor]
-//}
