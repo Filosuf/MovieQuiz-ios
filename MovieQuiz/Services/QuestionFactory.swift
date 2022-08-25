@@ -89,8 +89,11 @@ final class QuestionFactory: QuestionFactoryProtocol {
 
             let rating = Float(movie.rating) ?? 0
 
-            let text = "Рейтинг этого фильма больше чем 7?"
-            let correctAnswer = rating > 7
+            // swiftlint:disable force_unwrapping
+            let ratingInQuestion = [6, 7, 7, 7, 7, 8, 8, 8].randomElement()!
+            // swiftlint:enable force_unwrapping
+            let text = "Рейтинг этого фильма больше чем \(ratingInQuestion)?"
+            let correctAnswer = rating > Float(ratingInQuestion)
 
             let question = QuizeQuestion(
                 image: imageData,

@@ -14,6 +14,8 @@ protocol MoviesLoading {
 struct MoviesLoader: MoviesLoading {
     private enum NetworkError: Error {
         case decodeError
+        case invalidApiKey
+        case unowned
     }
 
     // MARK: - NetworkClient
@@ -34,7 +36,13 @@ struct MoviesLoader: MoviesLoading {
             case .success(let data):
                 do {
                     let mostPopularMovies = try JSONDecoder().decode(MostPopularMovies.self, from: data)
-                    handler(.success(mostPopularMovies))
+                    if !mostPopularMovies.items.isEmpty {
+                        handler(.success(mostPopularMovies))
+                    } else if mostPopularMovies.errorMessage == "Invalid API Key" {
+                        handler(.failure(NetworkError.invalidApiKey))
+                    } else {
+                        handler(.failure(NetworkError.unowned))
+                    }
                 } catch {
                     handler(.failure(NetworkError.decodeError))
                 }

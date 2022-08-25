@@ -11,7 +11,7 @@ final class MovieQuizViewController: UIViewController {
     private let statisticService: StatisticService = StatisticServiceImplementation()
     private var currentQuestion: QuizeQuestion!
     private var currentQuestionIndex = 0
-    private let questionsAmount = 10
+    private let questionsAmount = 3
     private var currentCorrectAnswer = 0
     private var recordCorrectAnswer = 0
     private var allCorrectAnswer = 0
@@ -44,9 +44,6 @@ final class MovieQuizViewController: UIViewController {
     override func viewDidLoad() {
         setupView()
         startGame()
-        questionFactory.loadData()
-        showLoadingIndicator()
-        print(NSHomeDirectory())
         super.viewDidLoad()
     }
 
@@ -83,10 +80,18 @@ final class MovieQuizViewController: UIViewController {
     private func startGame() {
         currentCorrectAnswer = 0
         currentQuestionIndex = 0
-        // запросить следующий вопрос
-//        questionFactory.requestNextQuestion()
+        // Загрузка данных о фильмах из интернета
+        questionFactory.loadData()
+        // Запуск индикатора загрузки
+        showLoadingIndicator()
     }
 
+    private func restartGame() {
+        currentCorrectAnswer = 0
+        currentQuestionIndex = 0
+        // запросить следующий вопрос
+        questionFactory.requestNextQuestion()
+    }
     private func show(quize step: QuizeStepViewModel) {
         // здесь мы заполняем нашу картинку, текст и счётчик данными
         counterLabel.text = step.questionNumber
@@ -109,7 +114,7 @@ final class MovieQuizViewController: UIViewController {
                 self?.overlayForAlertView.alpha = 0
             }
             self?.overlayForAlertView.removeFromSuperview()
-            self?.startGame()
+            self?.restartGame()
         }
     }
 
@@ -192,12 +197,13 @@ final class MovieQuizViewController: UIViewController {
             self.overlayForAlertView.alpha = UIColor.YPTheme.background.cgColor.alpha
         }
 
-        // здесь мы показываем результат прохождения квиза
+        // здесь мы показываем ошибку
         alertPresenter.showErrorAlert(message: message) { [weak self] in
             // убираем затемнение фона
             UIView.animate(withDuration: 0.25) {
                 self?.overlayForAlertView.alpha = 0
             }
+            self?.startGame()
             self?.overlayForAlertView.removeFromSuperview()
         }
     }
