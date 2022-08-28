@@ -12,58 +12,6 @@ final class QuestionFactory: QuestionFactoryProtocol {
     private let delegate: QuestionFactoryDelegate
     private let moviesLoader: MoviesLoading
     private var movies: [MostPopularMovie] = []
-//    private let questionsArray: [QuizeQuestion] = [
-//    QuizeQuestion(
-//        image: "The Godfather",
-//        text: "Рейтинг этого фильма больше чем 6?",
-//        correctAnswer: true
-//    ),
-//    QuizeQuestion(
-//        image: "The Dark Knight",
-//        text: "Рейтинг этого фильма больше чем 6?",
-//        correctAnswer: true
-//    ),
-//    QuizeQuestion(
-//        image: "Kill Bill",
-//        text: "Рейтинг этого фильма больше чем 6?",
-//        correctAnswer: true
-//    ),
-//    QuizeQuestion(
-//        image: "The Avengers",
-//        text: "Рейтинг этого фильма больше чем 6?",
-//        correctAnswer: true
-//    ),
-//    QuizeQuestion(
-//        image: "Deadpool",
-//        text: "Рейтинг этого фильма больше чем 6?",
-//        correctAnswer: true
-//    ),
-//    QuizeQuestion(
-//        image: "The Green Knight",
-//        text: "Рейтинг этого фильма больше чем 6?",
-//        correctAnswer: true
-//    ),
-//    QuizeQuestion(
-//        image: "Old",
-//        text: "Рейтинг этого фильма больше чем 6?",
-//        correctAnswer: false
-//    ),
-//    QuizeQuestion(
-//        image: "The Ice Age Adventures of Buck Wild",
-//        text: "Рейтинг этого фильма больше чем 6?",
-//        correctAnswer: false
-//    ),
-//    QuizeQuestion(
-//        image: "Tesla",
-//        text: "Рейтинг этого фильма больше чем 6?",
-//        correctAnswer: false
-//    ),
-//    QuizeQuestion(
-//        image: "Vivarium",
-//        text: "Рейтинг этого фильма больше чем 6?",
-//        correctAnswer: false
-//    )
-//    ]
 
     // MARK: - Lifecycle
     init(moviesLoader: MoviesLoading, delegate: QuestionFactoryDelegate) {
@@ -87,10 +35,11 @@ final class QuestionFactory: QuestionFactoryProtocol {
                 print("Failed to load image")
             }
 
+            print("Movie.raiting = \(movie.rating)")
             let rating = Float(movie.rating) ?? 0
 
             // swiftlint:disable force_unwrapping
-            let ratingInQuestion = [6, 7, 7, 7, 7, 8, 8, 8].randomElement()!
+            let ratingInQuestion = [5, 6, 6, 7, 7, 7, 7, 8].randomElement()!
             // swiftlint:enable force_unwrapping
             let text = "Рейтинг этого фильма больше чем \(ratingInQuestion)?"
             let correctAnswer = rating > Float(ratingInQuestion)

@@ -11,7 +11,7 @@ final class MovieQuizViewController: UIViewController {
     private let statisticService: StatisticService = StatisticServiceImplementation()
     private var currentQuestion: QuizeQuestion!
     private var currentQuestionIndex = 0
-    private let questionsAmount = 3
+    private let questionsAmount = 10
     private var currentCorrectAnswer = 0
     private var recordCorrectAnswer = 0
     private var allCorrectAnswer = 0
@@ -30,7 +30,7 @@ final class MovieQuizViewController: UIViewController {
     @IBOutlet private weak var posterImage: UIImageView!
     @IBOutlet private weak var questionLabel: UILabel!
     @IBOutlet private var buttons: [UIButton]!
-    @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
+    @IBOutlet private weak var activityIndicator: UIActivityIndicatorView!
 
     @IBAction private func yesTapped() {
         handleAnswer(response: true)
@@ -74,6 +74,7 @@ final class MovieQuizViewController: UIViewController {
             currentQuestionIndex += 1 // увеличиваем индекс текущего вопроса на 1
             // запросить следующий вопрос
             questionFactory.requestNextQuestion()
+            activityIndicator.startAnimating()
         }
     }
 
@@ -184,7 +185,6 @@ final class MovieQuizViewController: UIViewController {
     }
 
     private func showLoadingIndicator() {
-        activityIndicator.isHidden = false // говорим, что индикатор загрузки не скрыт
         activityIndicator.startAnimating() // включаем анимацию
     }
 
@@ -212,6 +212,7 @@ final class MovieQuizViewController: UIViewController {
 // MARK: - QuestionFactoryDelegate
 extension MovieQuizViewController: QuestionFactoryDelegate {
     func didReceiveNextQuestion(question: QuizeQuestion?) {
+        activityIndicator.stopAnimating()
         guard let question = question else { return }
         currentQuestion = question
         let viewModel = convert(model: question)
