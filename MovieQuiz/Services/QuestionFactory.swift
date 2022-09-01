@@ -27,7 +27,7 @@ final class QuestionFactory: QuestionFactoryProtocol {
 
             guard let movie = self.movies[safe: index] else { return }
 
-            var imageData = Data()
+            var imageData: Data?
 
             do {
                 imageData = try Data(contentsOf: movie.imageURL)
@@ -35,8 +35,10 @@ final class QuestionFactory: QuestionFactoryProtocol {
                 print("Failed to load image")
             }
 
-            print("Movie.raiting = \(movie.rating)")
-            let rating = Float(movie.rating) ?? 0
+            guard let imageData = imageData, let rating = Float(movie.rating) else {
+                self.delegate.didReceiveNextQuestion(question: nil)
+                return
+            }
 
             // swiftlint:disable force_unwrapping
             let ratingInQuestion = [5, 6, 6, 7, 7, 7, 7, 8].randomElement()!

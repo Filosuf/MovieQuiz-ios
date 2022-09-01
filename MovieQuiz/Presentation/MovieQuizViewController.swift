@@ -142,7 +142,6 @@ final class MovieQuizViewController: UIViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
         // код, который вы хотите вызвать через 1 секунду,
         // в нашем случае это просто функция showNextQuestionOrResults()
-            self.buttonsEnable(true)
             self.showNextQuestionOrResults()
         }
     }
@@ -203,7 +202,10 @@ final class MovieQuizViewController: UIViewController {
             UIView.animate(withDuration: 0.25) {
                 self?.overlayForAlertView.alpha = 0
             }
-            self?.startGame()
+            // Загрузка данных о фильмах из интернета
+            self?.questionFactory.loadData()
+            // Запуск индикатора загрузки
+            self?.showLoadingIndicator()
             self?.overlayForAlertView.removeFromSuperview()
         }
     }
@@ -212,12 +214,16 @@ final class MovieQuizViewController: UIViewController {
 // MARK: - QuestionFactoryDelegate
 extension MovieQuizViewController: QuestionFactoryDelegate {
     func didReceiveNextQuestion(question: QuizeQuestion?) {
-        activityIndicator.stopAnimating()
-        guard let question = question else { return }
-        currentQuestion = question
-        let viewModel = convert(model: question)
-        DispatchQueue.main.async { [weak self] in
-            self?.show(quize: viewModel)
+        if let question = question {
+            buttonsEnable(true)
+            activityIndicator.stopAnimating()
+            currentQuestion = question
+            let viewModel = convert(model: question)
+            show(quize: viewModel)
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.showNetworkError(message: "Данные повреждены или их не удалось загрузить")
+            }
         }
     }
 
