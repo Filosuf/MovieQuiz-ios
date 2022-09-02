@@ -1,87 +1,17 @@
 import UIKit
 
-struct QuizeQuestion {
-    // MARK: - Properties
-    let imageName: String
-    let text: String
-    let correctAnswer: Bool
-
-    // MARK: - Metods
-    static func makeQuizeQuestion() -> [QuizeQuestion] {
-        var quizeQuestionArray: [QuizeQuestion] = []
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "The Godfather",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "The Dark Knight",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "Kill Bill",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "The Avengers",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "Deadpool",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "The Green Knight",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "Old",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: false
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "The Ice Age Adventures of Buck Wild",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: false
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "Tesla",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: false
-        ))
-        quizeQuestionArray.append(QuizeQuestion(
-            imageName: "Vivarium",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: false
-        ))
-        return quizeQuestionArray
-    }
-}
-
-// для состояния "Вопрос задан"
-struct QuizeStepViewModel {
-    let image: UIImage
-    let question: String
-    let questionNumber: String
-}
-
-// для состояния "Результат квиза"
-struct QuizeResultsViewModel {
-    let title: String
-    let text: String
-    let buttonText: String
-}
-
 final class MovieQuizViewController: UIViewController {
     // MARK: - Properties
-    private var questions = QuizeQuestion.makeQuizeQuestion()
+    private let moviesLoader = MoviesLoader()
+    private lazy var questionFactory: QuestionFactoryProtocol = QuestionFactory(
+        moviesLoader: moviesLoader,
+        delegate: self
+    )
+    private lazy var alertPresenter = AlertPresenter(viewController: self)
+    private let statisticService: StatisticService = StatisticServiceImplementation()
+    private var currentQuestion: QuizeQuestion!
     private var currentQuestionIndex = 0
-    private let numberOfQuestionsInGame = 10
+    private let questionsAmount = 10
     private var currentCorrectAnswer = 0
     private var recordCorrectAnswer = 0
     private var allCorrectAnswer = 0
@@ -100,6 +30,7 @@ final class MovieQuizViewController: UIViewController {
     @IBOutlet private weak var posterImage: UIImageView!
     @IBOutlet private weak var questionLabel: UILabel!
     @IBOutlet private var buttons: [UIButton]!
+    @IBOutlet private weak var activityIndicator: UIActivityIndicatorView!
 
     @IBAction private func yesTapped() {
         handleAnswer(response: true)
@@ -123,7 +54,7 @@ final class MovieQuizViewController: UIViewController {
     override var preferredStatusBarStyle: UIStatusBarStyle {
         .lightContent
     }
-    // MARK: - Metods
+    // MARK: - Methods
     private func setupView() {
         for button in buttons {
             button.layer.cornerRadius = 15
@@ -132,26 +63,36 @@ final class MovieQuizViewController: UIViewController {
     }
 
     private func showNextQuestionOrResults() {
-        if currentQuestionIndex == numberOfQuestionsInGame - 1 {
+        if currentQuestionIndex == questionsAmount - 1 {
+            let isBestGame = currentCorrectAnswer > statisticService.bestGame.correct
+            // запись результатов в память
+            statisticService.store(correct: currentCorrectAnswer, total: questionsAmount)
             // показать результат квиза
-            gameCount += 1
-            allCorrectAnswer += currentCorrectAnswer
-            let resultQuize = getResultQuize()
+            let resultQuize = getResultQuize(isBestGame: isBestGame)
             show(quize: resultQuize)
         } else {
             currentQuestionIndex += 1 // увеличиваем индекс текущего вопроса на 1
-            // показать следующий вопрос
-            show(quize: convert(model: questions[currentQuestionIndex]))
+            // запросить следующий вопрос
+            questionFactory.requestNextQuestion()
+            activityIndicator.startAnimating()
         }
     }
 
     private func startGame() {
         currentCorrectAnswer = 0
         currentQuestionIndex = 0
-        questions.shuffle()
-        show(quize: convert(model: questions[currentQuestionIndex]))
+        // Загрузка данных о фильмах из интернета
+        questionFactory.loadData()
+        // Запуск индикатора загрузки
+        showLoadingIndicator()
     }
 
+    private func restartGame() {
+        currentCorrectAnswer = 0
+        currentQuestionIndex = 0
+        // запросить следующий вопрос
+        questionFactory.requestNextQuestion()
+    }
     private func show(quize step: QuizeStepViewModel) {
         // здесь мы заполняем нашу картинку, текст и счётчик данными
         counterLabel.text = step.questionNumber
@@ -161,49 +102,37 @@ final class MovieQuizViewController: UIViewController {
     }
 
     private func show(quize result: QuizeResultsViewModel) {
-        // здесь мы показываем результат прохождения квиза
-        // создаём объекты всплывающего окна
-        let alert = UIAlertController(
-            title: result.title, // заголовок всплывающего окна
-            message: result.text, // текст во всплывающем окне
-            preferredStyle: .alert) // preferredStyle может быть .alert или .actionSheet
-
-        // создаём для него кнопки с действиями
-        let action = UIAlertAction(title: result.buttonText, style: .default) { [weak self] _ in
-            // убираем затемнение фона
-            UIView.animate(withDuration: 0.25) {
-                self?.overlayForAlertView.alpha = 0
-            }
-            self?.overlayForAlertView.removeFromSuperview()
-            self?.startGame()
-        }
-
-        // добавляем в алерт кнопки
-        alert.addAction(action)
-
         // затемнение фона
         view.addSubview(overlayForAlertView)
         UIView.animate(withDuration: 0.25) {
             self.overlayForAlertView.alpha = UIColor.YPTheme.background.cgColor.alpha
         }
-        // показываем всплывающее окно
-        present(alert, animated: true, completion: nil)
+
+        // здесь мы показываем результат прохождения квиза
+        alertPresenter.showResultAlert(result: result) { [weak self] in
+            // убираем затемнение фона
+            UIView.animate(withDuration: 0.25) {
+                self?.overlayForAlertView.alpha = 0
+            }
+            self?.overlayForAlertView.removeFromSuperview()
+            self?.restartGame()
+        }
     }
 
     private func convert(model: QuizeQuestion) -> QuizeStepViewModel {
         // swiftlint:disable force_unwrapping
         let notAvailableImage = UIImage(systemName: "exclamationmark.icloud.fill")!
         // swiftlint:enable force_unwrapping
-        let image = UIImage(named: model.imageName) ?? notAvailableImage
+        let image = UIImage(data: model.image) ?? notAvailableImage
         return QuizeStepViewModel(
             image: image,
             question: model.text,
-            questionNumber: "\(currentQuestionIndex + 1)/\(numberOfQuestionsInGame)"
+            questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)"
         )
     }
 
     private func handleAnswer(response: Bool) {
-        if response == questions[currentQuestionIndex].correctAnswer {
+        if response == currentQuestion.correctAnswer {
             currentCorrectAnswer += 1
             showCorrectAnswer(response: true)
         } else {
@@ -213,7 +142,6 @@ final class MovieQuizViewController: UIViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
         // код, который вы хотите вызвать через 1 секунду,
         // в нашем случае это просто функция showNextQuestionOrResults()
-            self.buttonsEnable(true)
             self.showNextQuestionOrResults()
         }
     }
@@ -227,26 +155,22 @@ final class MovieQuizViewController: UIViewController {
         }
     }
 
-    private func getResultQuize() -> QuizeResultsViewModel {
+    private func getResultQuize(isBestGame: Bool) -> QuizeResultsViewModel {
         var alertTitle = "Этот раунд окончен!"
-        var recordDateString = ""
-        if currentCorrectAnswer >= recordCorrectAnswer {
-            alertTitle = "Новый рекорд!"
-            recordCorrectAnswer = currentCorrectAnswer
-            recordDateString = Date().dateTimeString
-        }
+        if isBestGame {
+            alertTitle = "Новый рекорд!"        }
 
-        if currentCorrectAnswer == numberOfQuestionsInGame {
+        if currentCorrectAnswer == questionsAmount {
             alertTitle = "Поздравляем. Лучший результат!"
         }
-        averageAccuracy = Double(allCorrectAnswer * 100) / Double(numberOfQuestionsInGame * gameCount)
+        let bestGame = statisticService.bestGame
         let resultQuize = QuizeResultsViewModel(
             title: alertTitle,
             text: """
-            Ваш результат:\(currentCorrectAnswer)/\(numberOfQuestionsInGame)
-            Количество сыграных квизов: \(gameCount)
-            Рекорд: \(recordCorrectAnswer)/\(numberOfQuestionsInGame) \(recordDateString)
-            Средняя точность: \(String(format: "%.02f", averageAccuracy))%
+            Ваш результат:\(currentCorrectAnswer)/\(questionsAmount)
+            Количество сыграных квизов: \(statisticService.gamesCount)
+            Рекорд: \(bestGame.correct)/\(bestGame.total) \(bestGame.date.dateTimeString)
+            Средняя точность: \(String(format: "%.02f", statisticService.totalAccuracy * 100))%
             """,
             buttonText: "Начать новую игру"
         )
@@ -257,5 +181,56 @@ final class MovieQuizViewController: UIViewController {
         for button in self.buttons {
             button.isEnabled = state
         }
+    }
+
+    private func showLoadingIndicator() {
+        activityIndicator.startAnimating() // включаем анимацию
+    }
+
+    private func showNetworkError(message: String) {
+        activityIndicator.isHidden = true // скрываем индикатор загрузки
+
+        // затемнение фона
+        view.addSubview(overlayForAlertView)
+        UIView.animate(withDuration: 0.25) {
+            self.overlayForAlertView.alpha = UIColor.YPTheme.background.cgColor.alpha
+        }
+
+        // здесь мы показываем ошибку
+        alertPresenter.showErrorAlert(message: message) { [weak self] in
+            // убираем затемнение фона
+            UIView.animate(withDuration: 0.25) {
+                self?.overlayForAlertView.alpha = 0
+            }
+            // Загрузка данных о фильмах из интернета
+            self?.questionFactory.loadData()
+            // Запуск индикатора загрузки
+            self?.showLoadingIndicator()
+            self?.overlayForAlertView.removeFromSuperview()
+        }
+    }
+}
+
+// MARK: - QuestionFactoryDelegate
+extension MovieQuizViewController: QuestionFactoryDelegate {
+    func didReceiveNextQuestion(question: QuizeQuestion?) {
+        if let question = question {
+            buttonsEnable(true)
+            activityIndicator.stopAnimating()
+            currentQuestion = question
+            let viewModel = convert(model: question)
+            show(quize: viewModel)
+        } else {
+            showNetworkError(message: "Данные повреждены или их не удалось загрузить")
+        }
+    }
+
+    func didLoadDataFromServer() {
+        activityIndicator.stopAnimating() // скрываем индикатор загрузки
+        questionFactory.requestNextQuestion()
+    }
+
+    func didFailToLoadData(with error: Error) {
+        showNetworkError(message: error.localizedDescription) // возьмём в качестве сообщения описание ошибки
     }
 }
