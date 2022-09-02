@@ -221,9 +221,7 @@ extension MovieQuizViewController: QuestionFactoryDelegate {
             let viewModel = convert(model: question)
             show(quize: viewModel)
         } else {
-            DispatchQueue.main.async { [weak self] in
-                self?.showNetworkError(message: "Данные повреждены или их не удалось загрузить")
-            }
+            showNetworkError(message: "Данные повреждены или их не удалось загрузить")
         }
     }
 

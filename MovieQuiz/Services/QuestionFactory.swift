@@ -36,7 +36,10 @@ final class QuestionFactory: QuestionFactoryProtocol {
             }
 
             guard let imageData = imageData, let rating = Float(movie.rating) else {
-                self.delegate.didReceiveNextQuestion(question: nil)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    self.delegate.didReceiveNextQuestion(question: nil)
+                }
                 return
             }
 
