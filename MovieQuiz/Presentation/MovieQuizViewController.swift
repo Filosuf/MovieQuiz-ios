@@ -18,6 +18,7 @@ final class MovieQuizViewController: UIViewController {
     private var gameCount = 0
     private var averageAccuracy = 0.0
     private var recordDate = Date()
+    private var numberOfCorruptedQuestions = 0
 
     private lazy var overlayForAlertView: UIView = {
         let backgroundView = UIView(frame: self.view.frame)
@@ -79,6 +80,7 @@ final class MovieQuizViewController: UIViewController {
     }
 
     private func startGame() {
+        buttonsEnable(false)
         currentCorrectAnswer = 0
         currentQuestionIndex = 0
         // Загрузка данных о фильмах из интернета
@@ -215,13 +217,20 @@ final class MovieQuizViewController: UIViewController {
 extension MovieQuizViewController: QuestionFactoryDelegate {
     func didReceiveNextQuestion(question: QuizeQuestion?) {
         if let question = question {
+            numberOfCorruptedQuestions = 0
             buttonsEnable(true)
             activityIndicator.stopAnimating()
             currentQuestion = question
             let viewModel = convert(model: question)
             show(quize: viewModel)
         } else {
-            showNetworkError(message: "Данные повреждены или их не удалось загрузить")
+            if numberOfCorruptedQuestions < 5 {
+                print("Corruped Questions")
+                numberOfCorruptedQuestions += 1
+                questionFactory.requestNextQuestion()
+            } else {
+                showNetworkError(message: "Данные повреждены или их не удалось загрузить")
+            }
         }
     }
 

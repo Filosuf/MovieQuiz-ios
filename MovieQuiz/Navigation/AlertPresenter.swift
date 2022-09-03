@@ -24,6 +24,8 @@ final class AlertPresenter {
             message: result.text, // текст во всплывающем окне
             preferredStyle: .alert) // preferredStyle может быть .alert или .actionSheet
 
+        alert.view.accessibilityIdentifier = "result_alert"
+
         // создаём для него кнопки с действиями
         let action = UIAlertAction(title: result.buttonText, style: .default) { _ in
             action()
@@ -44,6 +46,8 @@ final class AlertPresenter {
             title: "Что-то пошло не так(", // заголовок всплывающего окна
             message: message, // текст во всплывающем окне
             preferredStyle: .alert) // preferredStyle может быть .alert или .actionSheet
+
+        alert.view.accessibilityIdentifier = "error_alert"
 
         // создаём для него кнопки с действиями
         let action = UIAlertAction(title: "Попробовать еще раз", style: .default) { _ in
