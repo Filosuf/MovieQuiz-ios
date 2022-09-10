@@ -7,11 +7,12 @@ final class MovieQuizViewController: UIViewController {
         moviesLoader: moviesLoader,
         delegate: self
     )
+    private let presenter = MovieQuizPresenter()
     private lazy var alertPresenter = AlertPresenter(viewController: self)
     private let statisticService: StatisticService = StatisticServiceImplementation()
     private var currentQuestion: QuizeQuestion!
-    private var currentQuestionIndex = 0
-    private let questionsAmount = 10
+//    private var currentQuestionIndex = 0
+//    private let questionsAmount = 10
     private var currentCorrectAnswer = 0
     private var recordCorrectAnswer = 0
     private var allCorrectAnswer = 0
@@ -64,15 +65,15 @@ final class MovieQuizViewController: UIViewController {
     }
 
     private func showNextQuestionOrResults() {
-        if currentQuestionIndex == questionsAmount - 1 {
+        if presenter.isLastQuestion() {
             let isBestGame = currentCorrectAnswer > statisticService.bestGame.correct
             // запись результатов в память
-            statisticService.store(correct: currentCorrectAnswer, total: questionsAmount)
+            statisticService.store(correct: currentCorrectAnswer, total: presenter.questionsAmount)
             // показать результат квиза
             let resultQuize = getResultQuize(isBestGame: isBestGame)
             show(quize: resultQuize)
         } else {
-            currentQuestionIndex += 1 // увеличиваем индекс текущего вопроса на 1
+            presenter.switchToNextQuestion() // увеличиваем индекс текущего вопроса на 1
             // запросить следующий вопрос
             questionFactory.requestNextQuestion()
             activityIndicator.startAnimating()
@@ -82,7 +83,7 @@ final class MovieQuizViewController: UIViewController {
     private func startGame() {
         buttonsEnable(false)
         currentCorrectAnswer = 0
-        currentQuestionIndex = 0
+        presenter.resetQuestionIndex()
         // Загрузка данных о фильмах из интернета
         questionFactory.loadData()
         // Запуск индикатора загрузки
@@ -91,7 +92,7 @@ final class MovieQuizViewController: UIViewController {
 
     private func restartGame() {
         currentCorrectAnswer = 0
-        currentQuestionIndex = 0
+        presenter.resetQuestionIndex()
         // запросить следующий вопрос
         questionFactory.requestNextQuestion()
     }
@@ -119,18 +120,6 @@ final class MovieQuizViewController: UIViewController {
             self?.overlayForAlertView.removeFromSuperview()
             self?.restartGame()
         }
-    }
-
-    private func convert(model: QuizeQuestion) -> QuizeStepViewModel {
-        // swiftlint:disable force_unwrapping
-        let notAvailableImage = UIImage(systemName: "exclamationmark.icloud.fill")!
-        // swiftlint:enable force_unwrapping
-        let image = UIImage(data: model.image) ?? notAvailableImage
-        return QuizeStepViewModel(
-            image: image,
-            question: model.text,
-            questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)"
-        )
     }
 
     private func handleAnswer(response: Bool) {
@@ -162,14 +151,14 @@ final class MovieQuizViewController: UIViewController {
         if isBestGame {
             alertTitle = "Новый рекорд!"        }
 
-        if currentCorrectAnswer == questionsAmount {
+        if currentCorrectAnswer == presenter.questionsAmount {
             alertTitle = "Поздравляем. Лучший результат!"
         }
         let bestGame = statisticService.bestGame
         let resultQuize = QuizeResultsViewModel(
             title: alertTitle,
             text: """
-            Ваш результат:\(currentCorrectAnswer)/\(questionsAmount)
+            Ваш результат:\(currentCorrectAnswer)/\(presenter.questionsAmount)
             Количество сыграных квизов: \(statisticService.gamesCount)
             Рекорд: \(bestGame.correct)/\(bestGame.total) \(bestGame.date.dateTimeString)
             Средняя точность: \(String(format: "%.02f", statisticService.totalAccuracy * 100))%
@@ -221,7 +210,7 @@ extension MovieQuizViewController: QuestionFactoryDelegate {
             buttonsEnable(true)
             activityIndicator.stopAnimating()
             currentQuestion = question
-            let viewModel = convert(model: question)
+            let viewModel = presenter.convert(model: question)
             show(quize: viewModel)
         } else {
             if numberOfCorruptedQuestions < 5 {

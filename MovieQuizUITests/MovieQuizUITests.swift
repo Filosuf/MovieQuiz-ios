@@ -63,16 +63,37 @@ class MovieQuizUITests: XCTestCase {
 
     func testShowAlert() {
         for _ in 1...10 {
+            sleep(3)
             app.buttons["No"].tap() // находим кнопку `Нет` и нажимаем её 10 раз
-            sleep(5)
         }
 
         let alert = app.alerts["result_alert"] // находим алерт
 
         sleep(5)
 
+        XCTAssertTrue(alert.exists)
         XCTAssertTrue(alert.label == "Этот раунд окончен!" || alert.label == "Новый рекорд!")
+        XCTAssertTrue(alert.buttons.firstMatch.label == "Начать новую игру")
+    }
+
+    func testHideAlert() {
+        for _ in 1...10 {
+            sleep(5)
+            app.buttons["No"].tap() // находим кнопку `Нет` и нажимаем её 10 раз
+        }
+
+        let alert = app.alerts["result_alert"] // находим алерт
+
+        sleep(5)
+
+        alert.buttons.firstMatch.tap() // находим кнопку на алерте `Начать новую игру` и нажимаем её
+
         sleep(3)
+
+        let indexLabel = app.staticTexts["Index"]
+
+        XCTAssertFalse(alert.exists)
+        XCTAssertTrue(indexLabel.label == "1/10")
     }
 }
 // swiftlint:enable all
