@@ -2,24 +2,14 @@ import UIKit
 
 final class MovieQuizViewController: UIViewController {
     // MARK: - Properties
-    private let moviesLoader = MoviesLoader()
-    private lazy var questionFactory: QuestionFactoryProtocol = QuestionFactory(
-        moviesLoader: moviesLoader,
-        delegate: self
-    )
-    private let presenter = MovieQuizPresenter()
+    private lazy var presenter = MovieQuizPresenter(viewController: self)
     private lazy var alertPresenter = AlertPresenter(viewController: self)
     private let statisticService: StatisticService = StatisticServiceImplementation()
-    private var currentQuestion: QuizeQuestion!
-//    private var currentQuestionIndex = 0
-//    private let questionsAmount = 10
-    private var currentCorrectAnswer = 0
     private var recordCorrectAnswer = 0
     private var allCorrectAnswer = 0
     private var gameCount = 0
     private var averageAccuracy = 0.0
     private var recordDate = Date()
-    private var numberOfCorruptedQuestions = 0
 
     private lazy var overlayForAlertView: UIView = {
         let backgroundView = UIView(frame: self.view.frame)
@@ -35,11 +25,11 @@ final class MovieQuizViewController: UIViewController {
     @IBOutlet private weak var activityIndicator: UIActivityIndicatorView!
 
     @IBAction private func yesTapped() {
-        handleAnswer(response: true)
+        presenter.handleAnswer(response: true)
     }
 
     @IBAction private func noTapped() {
-        handleAnswer(response: false)
+        presenter.handleAnswer(response: false)
     }
 
     // MARK: - Lifecycle
@@ -64,39 +54,40 @@ final class MovieQuizViewController: UIViewController {
         posterImage.layer.cornerRadius = 20
     }
 
-    private func showNextQuestionOrResults() {
+    func showNextQuestionOrResults() {
         if presenter.isLastQuestion() {
-            let isBestGame = currentCorrectAnswer > statisticService.bestGame.correct
+            let isBestGame = presenter.currentCorrectAnswer > statisticService.bestGame.correct
             // запись результатов в память
-            statisticService.store(correct: currentCorrectAnswer, total: presenter.questionsAmount)
+            statisticService.store(correct: presenter.currentCorrectAnswer, total: presenter.questionsAmount)
             // показать результат квиза
             let resultQuize = getResultQuize(isBestGame: isBestGame)
             show(quize: resultQuize)
         } else {
             presenter.switchToNextQuestion() // увеличиваем индекс текущего вопроса на 1
             // запросить следующий вопрос
-            questionFactory.requestNextQuestion()
+            presenter.requestNextQuestion()
             activityIndicator.startAnimating()
         }
     }
 
     private func startGame() {
         buttonsEnable(false)
-        currentCorrectAnswer = 0
+        presenter.resetCurrentCorrectAnswer()
         presenter.resetQuestionIndex()
         // Загрузка данных о фильмах из интернета
-        questionFactory.loadData()
+        presenter.loadData()
         // Запуск индикатора загрузки
         showLoadingIndicator()
     }
 
     private func restartGame() {
-        currentCorrectAnswer = 0
+        presenter.resetCurrentCorrectAnswer()
         presenter.resetQuestionIndex()
         // запросить следующий вопрос
-        questionFactory.requestNextQuestion()
+        presenter.requestNextQuestion()
     }
-    private func show(quize step: QuizeStepViewModel) {
+
+    func show(quize step: QuizeStepViewModel) {
         // здесь мы заполняем нашу картинку, текст и счётчик данными
         counterLabel.text = step.questionNumber
         posterImage.image = step.image
@@ -104,7 +95,7 @@ final class MovieQuizViewController: UIViewController {
         posterImage.layer.borderWidth = 0
     }
 
-    private func show(quize result: QuizeResultsViewModel) {
+    func show(quize result: QuizeResultsViewModel) {
         // затемнение фона
         view.addSubview(overlayForAlertView)
         UIView.animate(withDuration: 0.25) {
@@ -122,22 +113,7 @@ final class MovieQuizViewController: UIViewController {
         }
     }
 
-    private func handleAnswer(response: Bool) {
-        if response == currentQuestion.correctAnswer {
-            currentCorrectAnswer += 1
-            showCorrectAnswer(response: true)
-        } else {
-            showCorrectAnswer(response: false)
-        }
-        buttonsEnable(false)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-        // код, который вы хотите вызвать через 1 секунду,
-        // в нашем случае это просто функция showNextQuestionOrResults()
-            self.showNextQuestionOrResults()
-        }
-    }
-
-    private func showCorrectAnswer(response: Bool) {
+    func showCorrectAnswer(response: Bool) {
         posterImage.layer.borderWidth = 8
         if response {
             posterImage.layer.borderColor = UIColor.YPTheme.green.cgColor
@@ -151,14 +127,14 @@ final class MovieQuizViewController: UIViewController {
         if isBestGame {
             alertTitle = "Новый рекорд!"        }
 
-        if currentCorrectAnswer == presenter.questionsAmount {
+        if presenter.currentCorrectAnswer == presenter.questionsAmount {
             alertTitle = "Поздравляем. Лучший результат!"
         }
         let bestGame = statisticService.bestGame
         let resultQuize = QuizeResultsViewModel(
             title: alertTitle,
             text: """
-            Ваш результат:\(currentCorrectAnswer)/\(presenter.questionsAmount)
+            Ваш результат:\(presenter.currentCorrectAnswer)/\(presenter.questionsAmount)
             Количество сыграных квизов: \(statisticService.gamesCount)
             Рекорд: \(bestGame.correct)/\(bestGame.total) \(bestGame.date.dateTimeString)
             Средняя точность: \(String(format: "%.02f", statisticService.totalAccuracy * 100))%
@@ -168,18 +144,22 @@ final class MovieQuizViewController: UIViewController {
         return resultQuize
     }
 
-    private func buttonsEnable(_ state: Bool) {
+    func buttonsEnable(_ state: Bool) {
         for button in self.buttons {
             button.isEnabled = state
         }
     }
 
-    private func showLoadingIndicator() {
+    func showLoadingIndicator() {
         activityIndicator.startAnimating() // включаем анимацию
     }
 
-    private func showNetworkError(message: String) {
-        activityIndicator.isHidden = true // скрываем индикатор загрузки
+    func hideLoadingIndicator() {
+        activityIndicator.stopAnimating() // выключаем анимацию
+    }
+
+    func showNetworkError(message: String) {
+        hideLoadingIndicator() // скрываем индикатор загрузки
 
         // затемнение фона
         view.addSubview(overlayForAlertView)
@@ -194,41 +174,10 @@ final class MovieQuizViewController: UIViewController {
                 self?.overlayForAlertView.alpha = 0
             }
             // Загрузка данных о фильмах из интернета
-            self?.questionFactory.loadData()
+            self?.presenter.loadData()
             // Запуск индикатора загрузки
             self?.showLoadingIndicator()
             self?.overlayForAlertView.removeFromSuperview()
         }
-    }
-}
-
-// MARK: - QuestionFactoryDelegate
-extension MovieQuizViewController: QuestionFactoryDelegate {
-    func didReceiveNextQuestion(question: QuizeQuestion?) {
-        if let question = question {
-            numberOfCorruptedQuestions = 0
-            buttonsEnable(true)
-            activityIndicator.stopAnimating()
-            currentQuestion = question
-            let viewModel = presenter.convert(model: question)
-            show(quize: viewModel)
-        } else {
-            if numberOfCorruptedQuestions < 5 {
-                print("Corruped Questions")
-                numberOfCorruptedQuestions += 1
-                questionFactory.requestNextQuestion()
-            } else {
-                showNetworkError(message: "Данные повреждены или их не удалось загрузить")
-            }
-        }
-    }
-
-    func didLoadDataFromServer() {
-        activityIndicator.stopAnimating() // скрываем индикатор загрузки
-        questionFactory.requestNextQuestion()
-    }
-
-    func didFailToLoadData(with error: Error) {
-        showNetworkError(message: error.localizedDescription) // возьмём в качестве сообщения описание ошибки
     }
 }
