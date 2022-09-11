@@ -4,11 +4,6 @@ final class MovieQuizViewController: UIViewController {
     // MARK: - Properties
     private lazy var presenter = MovieQuizPresenter(viewController: self)
     private lazy var alertPresenter = AlertPresenter(viewController: self)
-    private let statisticService: StatisticService = StatisticServiceImplementation()
-    private var recordCorrectAnswer = 0
-    private var allCorrectAnswer = 0
-    private var gameCount = 0
-    private var averageAccuracy = 0.0
     private var recordDate = Date()
 
     private lazy var overlayForAlertView: UIView = {
@@ -35,7 +30,7 @@ final class MovieQuizViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         setupView()
-        startGame()
+        presenter.startGame()
         super.viewDidLoad()
     }
 
@@ -54,39 +49,6 @@ final class MovieQuizViewController: UIViewController {
         posterImage.layer.cornerRadius = 20
     }
 
-    func showNextQuestionOrResults() {
-        if presenter.isLastQuestion() {
-            let isBestGame = presenter.currentCorrectAnswer > statisticService.bestGame.correct
-            // запись результатов в память
-            statisticService.store(correct: presenter.currentCorrectAnswer, total: presenter.questionsAmount)
-            // показать результат квиза
-            let resultQuize = getResultQuize(isBestGame: isBestGame)
-            show(quize: resultQuize)
-        } else {
-            presenter.switchToNextQuestion() // увеличиваем индекс текущего вопроса на 1
-            // запросить следующий вопрос
-            presenter.requestNextQuestion()
-            activityIndicator.startAnimating()
-        }
-    }
-
-    private func startGame() {
-        buttonsEnable(false)
-        presenter.resetCurrentCorrectAnswer()
-        presenter.resetQuestionIndex()
-        // Загрузка данных о фильмах из интернета
-        presenter.loadData()
-        // Запуск индикатора загрузки
-        showLoadingIndicator()
-    }
-
-    private func restartGame() {
-        presenter.resetCurrentCorrectAnswer()
-        presenter.resetQuestionIndex()
-        // запросить следующий вопрос
-        presenter.requestNextQuestion()
-    }
-
     func show(quize step: QuizeStepViewModel) {
         // здесь мы заполняем нашу картинку, текст и счётчик данными
         counterLabel.text = step.questionNumber
@@ -101,7 +63,6 @@ final class MovieQuizViewController: UIViewController {
         UIView.animate(withDuration: 0.25) {
             self.overlayForAlertView.alpha = UIColor.YPTheme.background.cgColor.alpha
         }
-
         // здесь мы показываем результат прохождения квиза
         alertPresenter.showResultAlert(result: result) { [weak self] in
             // убираем затемнение фона
@@ -109,7 +70,7 @@ final class MovieQuizViewController: UIViewController {
                 self?.overlayForAlertView.alpha = 0
             }
             self?.overlayForAlertView.removeFromSuperview()
-            self?.restartGame()
+            self?.presenter.restartGame()
         }
     }
 
@@ -120,28 +81,6 @@ final class MovieQuizViewController: UIViewController {
         } else {
             posterImage.layer.borderColor = UIColor.YPTheme.red.cgColor
         }
-    }
-
-    private func getResultQuize(isBestGame: Bool) -> QuizeResultsViewModel {
-        var alertTitle = "Этот раунд окончен!"
-        if isBestGame {
-            alertTitle = "Новый рекорд!"        }
-
-        if presenter.currentCorrectAnswer == presenter.questionsAmount {
-            alertTitle = "Поздравляем. Лучший результат!"
-        }
-        let bestGame = statisticService.bestGame
-        let resultQuize = QuizeResultsViewModel(
-            title: alertTitle,
-            text: """
-            Ваш результат:\(presenter.currentCorrectAnswer)/\(presenter.questionsAmount)
-            Количество сыграных квизов: \(statisticService.gamesCount)
-            Рекорд: \(bestGame.correct)/\(bestGame.total) \(bestGame.date.dateTimeString)
-            Средняя точность: \(String(format: "%.02f", statisticService.totalAccuracy * 100))%
-            """,
-            buttonText: "Начать новую игру"
-        )
-        return resultQuize
     }
 
     func buttonsEnable(_ state: Bool) {
@@ -174,7 +113,7 @@ final class MovieQuizViewController: UIViewController {
                 self?.overlayForAlertView.alpha = 0
             }
             // Загрузка данных о фильмах из интернета
-            self?.presenter.loadData()
+            self?.presenter.startGame()
             // Запуск индикатора загрузки
             self?.showLoadingIndicator()
             self?.overlayForAlertView.removeFromSuperview()

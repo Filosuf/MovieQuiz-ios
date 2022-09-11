@@ -14,6 +14,7 @@ final class MovieQuizPresenter {
         moviesLoader: moviesLoader,
         delegate: self
     )
+    private let statisticService: StatisticService = StatisticServiceImplementation()
     weak var viewController: MovieQuizViewController?
     var currentQuestion: QuizeQuestion!
     let questionsAmount: Int = 10
@@ -43,6 +44,23 @@ final class MovieQuizPresenter {
         currentCorrectAnswer = 0
     }
 
+    func startGame() {
+        viewController?.buttonsEnable(false)
+        resetCurrentCorrectAnswer()
+        resetQuestionIndex()
+        // Загрузка данных о фильмах из интернета
+        questionFactory.loadData()
+        // Запуск индикатора загрузки
+        viewController?.showLoadingIndicator()
+    }
+
+    func restartGame() {
+        resetCurrentCorrectAnswer()
+        resetQuestionIndex()
+        // запросить следующий вопрос
+        questionFactory.requestNextQuestion()
+    }
+
     func convert(model: QuizeQuestion) -> QuizeStepViewModel {
         let notAvailableImage = UIImage(systemName: "exclamationmark.icloud.fill") ?? UIImage()
         let image = UIImage(data: model.image) ?? notAvailableImage
@@ -64,17 +82,46 @@ final class MovieQuizPresenter {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
         // код, который вы хотите вызвать через 1 секунду,
         // в нашем случае это просто функция showNextQuestionOrResults()
-            self.viewController?.showNextQuestionOrResults()
+            self.showNextQuestionOrResults()
         }
     }
 
-    // MARK: - DEBUG, QuestionFactory
-    func loadData() {
-        questionFactory.loadData()
+    private func getResultQuize(isBestGame: Bool) -> QuizeResultsViewModel {
+        var alertTitle = "Этот раунд окончен!"
+        if isBestGame {
+            alertTitle = "Новый рекорд!"
+        }
+        if currentCorrectAnswer == questionsAmount {
+            alertTitle = "Поздравляем. Лучший результат!"
+        }
+        let bestGame = statisticService.bestGame
+        let resultQuize = QuizeResultsViewModel(
+            title: alertTitle,
+            text: """
+            Ваш результат:\(currentCorrectAnswer)/\(questionsAmount)
+            Количество сыграных квизов: \(statisticService.gamesCount)
+            Рекорд: \(bestGame.correct)/\(bestGame.total) \(bestGame.date.dateTimeString)
+            Средняя точность: \(String(format: "%.02f", statisticService.totalAccuracy * 100))%
+            """,
+            buttonText: "Начать новую игру"
+        )
+        return resultQuize
     }
 
-    func requestNextQuestion() {
-        questionFactory.requestNextQuestion()
+    private func showNextQuestionOrResults() {
+        if isLastQuestion() {
+            let isBestGame = currentCorrectAnswer > statisticService.bestGame.correct
+            // запись результатов в память
+            statisticService.store(correct: currentCorrectAnswer, total: questionsAmount)
+            // показать результат квиза
+            let resultQuize = getResultQuize(isBestGame: isBestGame)
+            viewController?.show(quize: resultQuize)
+        } else {
+            switchToNextQuestion() // увеличиваем индекс текущего вопроса на 1
+            // запросить следующий вопрос
+            questionFactory.requestNextQuestion()
+            viewController?.showLoadingIndicator()
+        }
     }
 }
     // MARK: - QuestionFactoryDelegate
