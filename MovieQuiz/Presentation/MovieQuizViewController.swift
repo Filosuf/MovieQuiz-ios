@@ -1,6 +1,19 @@
 import UIKit
+protocol MovieQuizViewControllerProtocol: AnyObject {
+    func show(quiz step: QuizStepViewModel)
+    func show(quiz result: QuizResultsViewModel)
 
-final class MovieQuizViewController: UIViewController {
+    func showCorrectAnswer(response: Bool)
+    func buttonsEnable(_ state: Bool)
+
+    func showLoadingIndicator()
+    func hideLoadingIndicator()
+
+    func showNetworkError(message: String)
+}
+
+
+final class MovieQuizViewController: UIViewController, MovieQuizViewControllerProtocol {
     // MARK: - Properties
     private lazy var presenter = MovieQuizPresenter(viewController: self)
     private lazy var alertPresenter = AlertPresenter(viewController: self)
@@ -49,7 +62,7 @@ final class MovieQuizViewController: UIViewController {
         posterImage.layer.cornerRadius = 20
     }
 
-    func show(quize step: QuizeStepViewModel) {
+    func show(quiz step: QuizStepViewModel) {
         // здесь мы заполняем нашу картинку, текст и счётчик данными
         counterLabel.text = step.questionNumber
         posterImage.image = step.image
@@ -57,7 +70,7 @@ final class MovieQuizViewController: UIViewController {
         posterImage.layer.borderWidth = 0
     }
 
-    func show(quize result: QuizeResultsViewModel) {
+    func show(quiz result: QuizResultsViewModel) {
         // затемнение фона
         view.addSubview(overlayForAlertView)
         UIView.animate(withDuration: 0.25) {

@@ -15,15 +15,15 @@ final class MovieQuizPresenter {
         delegate: self
     )
     private let statisticService: StatisticService = StatisticServiceImplementation()
-    weak var viewController: MovieQuizViewController?
-    var currentQuestion: QuizeQuestion!
+    weak var viewController: MovieQuizViewControllerProtocol?
+    var currentQuestion: QuizQuestion!
     let questionsAmount: Int = 10
     private var currentQuestionIndex: Int = 0
     private (set) var currentCorrectAnswer = 0
     private var numberOfCorruptedQuestions = 0
 
     // MARK: - Lifecycle
-    init(viewController: MovieQuizViewController) {
+    init(viewController: MovieQuizViewControllerProtocol) {
         self.viewController = viewController
     }
 
@@ -61,10 +61,10 @@ final class MovieQuizPresenter {
         questionFactory.requestNextQuestion()
     }
 
-    func convert(model: QuizeQuestion) -> QuizeStepViewModel {
+    func convert(model: QuizQuestion) -> QuizStepViewModel {
         let notAvailableImage = UIImage(systemName: "exclamationmark.icloud.fill") ?? UIImage()
         let image = UIImage(data: model.image) ?? notAvailableImage
-        return QuizeStepViewModel(
+        return QuizStepViewModel(
             image: image,
             question: model.text,
             questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)"
@@ -86,7 +86,7 @@ final class MovieQuizPresenter {
         }
     }
 
-    private func getResultQuize(isBestGame: Bool) -> QuizeResultsViewModel {
+    private func getResultQuize(isBestGame: Bool) -> QuizResultsViewModel {
         var alertTitle = "Этот раунд окончен!"
         if isBestGame {
             alertTitle = "Новый рекорд!"
@@ -95,7 +95,7 @@ final class MovieQuizPresenter {
             alertTitle = "Поздравляем. Лучший результат!"
         }
         let bestGame = statisticService.bestGame
-        let resultQuize = QuizeResultsViewModel(
+        let resultQuize = QuizResultsViewModel(
             title: alertTitle,
             text: """
             Ваш результат:\(currentCorrectAnswer)/\(questionsAmount)
@@ -115,7 +115,7 @@ final class MovieQuizPresenter {
             statisticService.store(correct: currentCorrectAnswer, total: questionsAmount)
             // показать результат квиза
             let resultQuize = getResultQuize(isBestGame: isBestGame)
-            viewController?.show(quize: resultQuize)
+            viewController?.show(quiz: resultQuize)
         } else {
             switchToNextQuestion() // увеличиваем индекс текущего вопроса на 1
             // запросить следующий вопрос
@@ -126,14 +126,14 @@ final class MovieQuizPresenter {
 }
     // MARK: - QuestionFactoryDelegate
 extension MovieQuizPresenter: QuestionFactoryDelegate {
-    func didReceiveNextQuestion(question: QuizeQuestion?) {
+    func didReceiveNextQuestion(question: QuizQuestion?) {
         if let question = question {
             numberOfCorruptedQuestions = 0
             viewController?.buttonsEnable(true)
             viewController?.hideLoadingIndicator()
             currentQuestion = question
             let viewModel = convert(model: question)
-            viewController?.show(quize: viewModel)
+            viewController?.show(quiz: viewModel)
         } else {
             if numberOfCorruptedQuestions < 5 {
                 print("Corruped Questions")

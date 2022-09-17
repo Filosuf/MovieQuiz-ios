@@ -9,13 +9,13 @@ import Foundation
 import UIKit
 
 final class AlertPresenter {
-    private let viewController: UIViewController?
+    private weak var viewController: UIViewController?
 
     init(viewController: UIViewController) {
         self.viewController = viewController
     }
 
-    func showResultAlert(result: QuizeResultsViewModel, action: @escaping () -> Void) {
+    func showResultAlert(result: QuizResultsViewModel, action: @escaping () -> Void) {
         guard let viewController = viewController else { return }
 
         // создаём объекты всплывающего окна
