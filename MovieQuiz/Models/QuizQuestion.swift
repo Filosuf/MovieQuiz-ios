@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct QuizeQuestion {
+struct QuizQuestion {
     // MARK: - Properties
     let image: Data
     let text: String

@@ -9,13 +9,13 @@ import Foundation
 import UIKit
 
 final class AlertPresenter {
-    private let viewController: UIViewController?
+    private weak var viewController: UIViewController?
 
     init(viewController: UIViewController) {
         self.viewController = viewController
     }
 
-    func showResultAlert(result: QuizeResultsViewModel, action: @escaping () -> Void) {
+    func showResultAlert(result: QuizResultsViewModel, action: @escaping () -> Void) {
         guard let viewController = viewController else { return }
 
         // создаём объекты всплывающего окна
@@ -23,6 +23,8 @@ final class AlertPresenter {
             title: result.title, // заголовок всплывающего окна
             message: result.text, // текст во всплывающем окне
             preferredStyle: .alert) // preferredStyle может быть .alert или .actionSheet
+
+        alert.view.accessibilityIdentifier = "result_alert"
 
         // создаём для него кнопки с действиями
         let action = UIAlertAction(title: result.buttonText, style: .default) { _ in
@@ -44,6 +46,8 @@ final class AlertPresenter {
             title: "Что-то пошло не так(", // заголовок всплывающего окна
             message: message, // текст во всплывающем окне
             preferredStyle: .alert) // preferredStyle может быть .alert или .actionSheet
+
+        alert.view.accessibilityIdentifier = "error_alert"
 
         // создаём для него кнопки с действиями
         let action = UIAlertAction(title: "Попробовать еще раз", style: .default) { _ in
